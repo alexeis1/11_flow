@@ -52,7 +52,9 @@ class FeedFragment : Fragment() {
                     Intent.createChooser(intent, getString(R.string.chooser_share_post))
                 startActivity(shareIntent)
             }
-        })
+        }){post ->
+            viewModel.markPostAsRead(post.id)
+        }
         binding.list.adapter = adapter
         viewModel.dataState.observe(viewLifecycleOwner) { state ->
             binding.progress.isVisible = state.loading
@@ -63,14 +65,40 @@ class FeedFragment : Fragment() {
                     .show()
             }
         }
+        var scrollToTop = false
         viewModel.data.observe(viewLifecycleOwner) { state ->
-            adapter.submitList(state.posts)
+            adapter.submitList(state.posts) {
+                if (scrollToTop) {
+                    binding.list.scrollToPosition(0)
+                }
+            }
             binding.emptyText.isVisible = state.empty
         }
+       // binding.list.setOn
+
         viewModel.newerCount.observe(viewLifecycleOwner) { state ->
-            // TODO: just log it, interaction must be in homework
+            if (state != 0){
+                binding.newPosts.text = getString(R.string.new_posts, state)
+                binding.newPosts.visibility = View.VISIBLE
+            } else {
+                binding.newPosts.visibility = View.GONE
+            }
+
             println(state)
         }
+
+        viewModel.getUnreadCount().observe(viewLifecycleOwner){
+            if (it == 0L){
+                binding.newPosts.visibility = View.GONE
+            }
+        }
+
+        binding.newPosts.setOnClickListener {
+            viewModel.markReadAllUnReadPosts()
+            scrollToTop = true
+        }
+
+     //   binding.list.set
 
         binding.swiperefresh.setOnRefreshListener {
             viewModel.refreshPosts()

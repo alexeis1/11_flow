@@ -4,8 +4,6 @@ import android.app.Application
 import androidx.lifecycle.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import ru.netology.nmedia.db.AppDb
@@ -15,7 +13,6 @@ import ru.netology.nmedia.model.FeedModelState
 import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.repository.PostRepositoryImpl
 import ru.netology.nmedia.util.SingleLiveEvent
-import kotlin.coroutines.EmptyCoroutineContext
 
 private val empty = Post(
     id = 0,
@@ -24,7 +21,8 @@ private val empty = Post(
     authorAvatar = "",
     likedByMe = false,
     likes = 0,
-    published = ""
+    published = "",
+    isRead = false
 )
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
@@ -54,6 +52,17 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     init {
         loadPosts()
     }
+
+    fun markReadAllUnReadPosts() = viewModelScope.launch {
+        repository.markReadAllUnReadPosts()
+    }
+
+    fun markPostAsRead(id: Long)= viewModelScope.launch {
+        repository.markPostAsRead(id)
+    }
+
+    fun getUnreadCount() =
+        repository.getUnreadCount().asLiveData()
 
     fun loadPosts() = viewModelScope.launch {
         try {
@@ -102,11 +111,21 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         edited.value = edited.value?.copy(content = text)
     }
 
-    fun likeById(id: Long) {
-        TODO()
+    fun likeById(id: Long) = viewModelScope.launch {
+        try {
+            repository.likeById(id)
+            _dataState.value = FeedModelState()
+        } catch (e: Exception) {
+            _dataState.value = FeedModelState(error = true)
+        }
     }
 
-    fun removeById(id: Long) {
-        TODO()
+    fun removeById(id: Long) = viewModelScope.launch {
+        try {
+            repository.removeById(id)
+            _dataState.value = FeedModelState()
+        } catch (e: Exception) {
+            _dataState.value = FeedModelState(error = true)
+        }
     }
 }

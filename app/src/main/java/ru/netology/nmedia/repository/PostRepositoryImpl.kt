@@ -17,7 +17,7 @@ import ru.netology.nmedia.error.UnknownError
 import java.io.IOException
 
 class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
-    override val data = dao.getAll()
+    override val data: Flow<List<Post>> = dao.getAll()
         .map(List<PostEntity>::toDto)
         .flowOn(Dispatchers.Default)
 
@@ -29,12 +29,22 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             }
 
             val body = response.body() ?: throw ApiError(response.code(), response.message())
-            dao.insert(body.toEntity())
+            dao.insert(body.toEntity( _isRead = true ))
         } catch (e: IOException) {
             throw NetworkError
         } catch (e: Exception) {
             throw UnknownError
         }
+    }
+
+    override fun getUnreadCount(): Flow<Long> = dao.unreadCountFlow()
+
+    override suspend fun markReadAllUnReadPosts() {
+        dao.setAllPostsRead()
+    }
+
+    override suspend fun markPostAsRead(id: Long){
+        dao.markPostsAsRead(id)
     }
 
     override fun getNewerCount(id: Long): Flow<Int> = flow {
@@ -46,8 +56,8 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             }
 
             val body = response.body() ?: throw ApiError(response.code(), response.message())
-            dao.insert(body.toEntity())
-            emit(body.size)
+            dao.insert(body.toEntity( _isRead = false ))
+            emit(dao.unreadCount().toInt())
         }
     }
         .catch { e -> throw AppError.from(e) }
@@ -70,10 +80,44 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
     }
 
     override suspend fun removeById(id: Long) {
-        TODO("Not yet implemented")
+        try {
+            //согласно условию задачи, сначала удаляем в БД
+            dao.removeById(id)
+            //потом с сервера
+            val response = PostsApi.service.removeById(id)
+            if (!response.isSuccessful) {
+                throw ApiError(response.code(), response.message())
+            }
+        } catch (e: IOException) {
+            throw NetworkError
+        } catch (e: Exception) {
+            throw UnknownError
+        }
     }
 
     override suspend fun likeById(id: Long) {
-        TODO("Not yet implemented")
+        try {
+            dao.getPostById(id)?.let{
+                it.toDto().copy(
+                    likedByMe = !it.likedByMe,
+                    likes     =  it.likes + if (it.likedByMe) -1 else +1
+                ).apply {
+                    //согласно условию задачи, сначала применяем в бд
+                    dao.insert(PostEntity.fromDto(this))
+                    //потом на сервер
+                    PostsApi.service.let {api->
+                        if (likedByMe) api.likeById(id) else api.dislikeById(id)
+                    }.apply {
+                        if (!isSuccessful) {
+                            throw ApiError(code(), message())
+                        }
+                    }
+                }
+            } ?: throw RuntimeException("UnknownError")
+        } catch (e: IOException) {
+            throw NetworkError
+        } catch (e: Exception) {
+            throw UnknownError
+        }
     }
 }
