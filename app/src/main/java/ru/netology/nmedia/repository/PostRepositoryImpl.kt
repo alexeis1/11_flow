@@ -43,10 +43,6 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
         dao.setAllPostsRead()
     }
 
-    override suspend fun markPostAsRead(id: Long){
-        dao.markPostsAsRead(id)
-    }
-
     override fun getNewerCount(id: Long): Flow<Int> = flow {
         while (true) {
             delay(10_000L)

@@ -30,9 +30,6 @@ interface PostDao {
     @Query("UPDATE PostEntity SET isRead=1 WHERE isRead=0")
     suspend fun setAllPostsRead()
 
-    @Query("UPDATE PostEntity SET isRead=1 WHERE id = :id")
-    suspend fun markPostsAsRead(id: Long)
-
     @Query("SELECT * FROM PostEntity WHERE id = :id")
     suspend fun getPostById(id: Long) : PostEntity?
 

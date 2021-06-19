@@ -57,10 +57,6 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         repository.markReadAllUnReadPosts()
     }
 
-    fun markPostAsRead(id: Long)= viewModelScope.launch {
-        repository.markPostAsRead(id)
-    }
-
     fun getUnreadCount() =
         repository.getUnreadCount().asLiveData()
 
