@@ -72,7 +72,6 @@ class FeedFragment : Fragment() {
             }
             binding.emptyText.isVisible = state.empty
         }
-       // binding.list.setOn
 
         viewModel.newerCount.observe(viewLifecycleOwner) { state ->
             if (state != 0){
